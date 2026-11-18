@@ -1,0 +1,5 @@
+# Echte Einstellungen (Passwort-Hash, Router-Zugang) - Vorlage: config.example.php
+config.php
+# Musik selbst einlegen: Pixabay erlaubt kein Weiterverteilen der Dateien
+musik/*
+!musik/.gitkeep

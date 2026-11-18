@@ -1,0 +1,208 @@
+/* /vpn - Abendzimmer mit Regenfenster, wie ein Lofi-Stream.
+   Das ganze Bild ist ein Fenster in der Daemmerung: Pflaume oben, Pfirsich
+   am Horizont, eine Stadt im Gegenlicht, Regen. Davor ein ruhiger Tisch
+   (das Formular) und unten links ein Mini-Player. Bewegung nur langsam und
+   gleichmaessig (Regen, Dampf, Lichter), bei reduced-motion steht alles. */
+:root {
+  --nacht: #231c38; --pflaume: #3b2f5e; --lila: #6b5a92; --rosa: #d89aa5; --pfirsich: #f2c3a0;
+  --lampe: #f6c177; --creme: #f4ebe1; --leise: #b8acd0; --tisch: #2e2546; --tisch-rand: #4a3d6e;
+  --fehler: #ffb4a8;
+  --schrift: ui-rounded, 'SF Pro Rounded', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'Cascadia Mono', Consolas, ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--nacht); color: var(--creme); font: 16px/1.55 var(--schrift); }
+[hidden] { display: none !important; }
+::selection { background: var(--lampe); color: var(--nacht); }
+:focus-visible { outline: 2px solid var(--lampe); outline-offset: 3px; }
+.unsichtbar { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+code { font-family: var(--mono); font-size: .88em; color: var(--lampe); }
+
+.zimmer { position: relative; min-height: 100vh; overflow: hidden; }
+
+/* ---------- Fenster ---------- */
+.fenster { position: fixed; inset: 0; z-index: 0; }
+.himmel { position: absolute; inset: 0;
+  background: linear-gradient(180deg, var(--nacht) 0%, var(--pflaume) 38%, var(--lila) 62%, var(--rosa) 80%, var(--pfirsich) 100%); }
+.mond { position: absolute; top: 12%; left: 18%; width: 64px; height: 64px; border-radius: 50%;
+  background: #fbeee0; box-shadow: 0 0 60px 18px rgba(251, 238, 224, .18); }
+.stadt { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 44%; }
+.stadt-fern { fill: #5a4a7e; }
+.stadt-nah { fill: #2a2142; }
+.lichter rect { fill: var(--lampe); animation: flackern 7s ease-in-out infinite; }
+.lichter rect:nth-child(3n) { animation-delay: -2s; animation-duration: 11s; }
+.lichter rect:nth-child(4n) { animation-delay: -5s; animation-duration: 9s; }
+@keyframes flackern { 0%, 100% { opacity: .9; } 45% { opacity: .9; } 50% { opacity: .2; } 60% { opacity: .85; } }
+
+/* Regen: einzelne Striche (stimmung.js), nur transform animiert - laeuft
+   auf der GPU und ruckelt nicht. Der Behaelter ist leicht gekippt. */
+.regen { position: absolute; inset: -15% -10%; overflow: hidden; transform: rotate(9deg); pointer-events: none; }
+.strich { position: absolute; top: 0; width: 1px; border-radius: 1px;
+  background: linear-gradient(rgba(244, 235, 225, 0), rgba(244, 235, 225, .55));
+  animation: fallen linear infinite; will-change: transform; }
+.strich.nah { width: 2px; filter: blur(.6px); }
+@keyframes fallen { from { transform: translateY(-30vh); } to { transform: translateY(130vh); } }
+
+/* Tropfen auf der Scheibe: hell gesaeumte Perlen mit Lichtpunkt, ein paar
+   rinnen ab und zu langsam herunter und ziehen eine Spur. */
+.scheibe { position: absolute; inset: 0; pointer-events: none; }
+.tropfen { position: absolute; border-radius: 50% 50% 48% 48% / 56% 56% 44% 44%;
+  background: radial-gradient(circle at 50% 40%, rgba(255, 245, 235, .04) 0 45%, rgba(255, 245, 235, .22) 72%, rgba(255, 245, 235, .5) 100%);
+  box-shadow: 0 1.5px 1.5px rgba(16, 10, 30, .35); }
+.tropfen::after { content: ""; position: absolute; top: 18%; left: 26%; width: 26%; height: 22%; border-radius: 50%;
+  background: rgba(255, 250, 245, .75); }
+.tropfen.rinnt { animation: rinnen var(--zeit) ease-in infinite; }
+.tropfen.rinnt::before { content: ""; position: absolute; left: 32%; right: 32%; bottom: 60%; height: var(--weg);
+  border-radius: 2px; background: linear-gradient(rgba(255, 245, 235, 0), rgba(255, 245, 235, .28));
+  transform-origin: bottom; animation: spur var(--zeit) ease-in infinite; }
+@keyframes rinnen {
+  0%, 55% { transform: translateY(0); opacity: 1; }
+  92% { opacity: 1; }
+  100% { transform: translateY(var(--weg)); opacity: 0; } }
+@keyframes spur { 0%, 55% { transform: scaleY(0); } 100% { transform: scaleY(1); } }
+
+/* Fensterkreuz und Sims */
+.rahmen { position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(#1a142b, #1a142b) 50% 0 / 14px 100% no-repeat,
+    linear-gradient(#1a142b, #1a142b) 0 46% / 100% 12px no-repeat;
+  border: 22px solid #1a142b; border-bottom-width: 64px; }
+.rahmen::after { content: ""; position: absolute; left: -22px; right: -22px; bottom: -64px; height: 64px;
+  background: linear-gradient(#3a2d52, #241c37); box-shadow: 0 -2px 0 rgba(246, 193, 119, .15); }
+
+.pflanze, .tasse { position: absolute; bottom: 52px; z-index: 1; }
+.pflanze { right: calc(6% + 70px); width: 88px; }
+.blatt { fill: #5f8a6e; }
+.topf { fill: #c07d62; }
+.tasse { right: 6%; width: 58px; }
+.becher { fill: var(--creme); }
+.henkel { fill: none; stroke: var(--creme); stroke-width: 5; }
+.dampf { position: absolute; bottom: 46px; left: 18px; width: 8px; height: 30px; border-radius: 8px;
+  background: linear-gradient(transparent, rgba(244, 235, 225, .45)); filter: blur(3px);
+  animation: dampfen 4s ease-in-out infinite; }
+.dampf.d2 { left: 30px; animation-delay: -2s; }
+@keyframes dampfen { 0% { transform: translateY(6px) scaleY(.6); opacity: 0; } 40% { opacity: .9; }
+  100% { transform: translateY(-26px) translateX(4px) scaleY(1.2); opacity: 0; } }
+
+/* ---------- Vordergrund ---------- */
+.ueberlagerung { position: relative; z-index: 2; min-height: 100vh; display: flex; flex-direction: column;
+  padding: 24px clamp(16px, 4vw, 56px) 0; }
+.leiste { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--creme); }
+.live { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 999px; background: rgba(26, 20, 43, .75); }
+.punkt { width: 8px; height: 8px; border-radius: 50%; background: #ff7a8a; animation: atmen 2.4s ease-in-out infinite; }
+@keyframes atmen { 50% { opacity: .35; } }
+.uhr { padding: 4px 12px; border-radius: 999px; background: rgba(26, 20, 43, .75); font-variant-numeric: tabular-nums; }
+
+.tisch { margin: 20px 0 20px auto; width: min(100%, 540px); background: var(--tisch); border: 1px solid var(--tisch-rand);
+  border-radius: 18px; padding: 28px 28px 24px; box-shadow: 0 24px 60px -20px rgba(10, 6, 20, .7); }
+/* Eingeloggt nutzt der Tisch die Breite: links das Formular, rechts die Liste. */
+[data-ansicht=haupt] .tisch { width: min(100%, 1060px); padding: 28px 36px 24px; }
+.spalten { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 40px; }
+.playlist { border-left: 1px dashed var(--tisch-rand); padding-left: 40px; }
+.playlist h2 { margin-top: 0; }
+.playlist .liste { max-height: 46vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--tisch-rand) transparent; }
+@media (max-width: 900px) {
+  .spalten { grid-template-columns: 1fr; }
+  .playlist { border-left: 0; padding-left: 0; }
+  .playlist h2 { margin-top: 28px; }
+}
+h1 { font-size: clamp(32px, 4.4vw, 52px); line-height: 1.05; font-weight: 600; margin: 0 0 8px; letter-spacing: -.01em; }
+h2 { font-size: 18px; font-weight: 600; margin: 28px 0 8px; }
+.leise { color: var(--leise); }
+.tisch > p, #setup > p, #login > p, #haupt > p { margin: 0 0 16px; }
+.fehler { color: var(--fehler); margin: 10px 0 0; }
+
+.reihe { display: flex; gap: 8px; }
+input { flex: 1; min-width: 0; font: inherit; color: var(--creme); background: #1f1932; border: 1px solid var(--tisch-rand);
+  border-radius: 12px; padding: 10px 14px; }
+input::placeholder { color: #7f739c; }
+input:focus { outline: none; border-color: var(--lampe); }
+.knopf { font: inherit; font-weight: 600; color: var(--nacht); background: var(--lampe); border: 0; border-radius: 12px;
+  padding: 10px 18px; cursor: pointer; white-space: nowrap; }
+.knopf:hover { background: #f9d19a; }
+.knopf:disabled { opacity: .6; cursor: progress; }
+.knopf.klein { padding: 6px 14px; font-size: 14px; }
+.text-knopf { font: inherit; font-size: 14px; color: var(--leise); background: none; border: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; }
+.text-knopf:hover { color: var(--creme); }
+@media (max-width: 460px) { .reihe { flex-direction: column; } }
+
+.zettel { margin: 18px 0 0; padding: 14px 16px; background: #f4ebe1; color: #3a2f4f; border-radius: 6px;
+  transform: rotate(-.6deg); box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .6); }
+.zettel p { margin: 0 0 8px; }
+.zettel .leise { color: #6e6283; }
+.zettel span:not(.leise) { font-family: var(--mono); font-size: 13px; }
+.zettel .knoepfe { display: flex; gap: 16px; align-items: center; margin: 12px 0 0; }
+.zettel .text-knopf { color: #6e6283; }
+.zettel summary { cursor: pointer; color: #6e6283; margin-top: 10px; font-size: 14px; }
+pre { font: 12px/1.55 var(--mono); white-space: pre; overflow-x: auto; margin: 8px 0 0; }
+#setup-ergebnis { font: 12px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.liste { list-style: none; margin: 0; padding: 0; }
+.peer { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; padding: 10px 0; border-top: 1px dashed var(--tisch-rand); }
+.peer-name { font-weight: 600; }
+.peer-adr, .peer-status, .peer-daten { grid-column: 1; font-size: 13px; color: var(--leise); }
+.peer-adr { font-family: var(--mono); font-size: 12px; }
+.an .peer-name::after { content: "  on air"; color: var(--lampe); font-weight: 400; font-size: 13px; }
+.an .peer-status { color: var(--lampe); }
+.aus { opacity: .5; }
+.peer-weg, .peer-fremd { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
+.peer-weg { font: inherit; font-size: 13px; color: var(--creme); background: none; border: 1px solid var(--tisch-rand);
+  border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.peer-weg:hover { border-color: var(--fehler); color: var(--fehler); }
+.peer-fremd { font-size: 12px; color: #7f739c; }
+
+/* ---------- Mini-Player ---------- */
+.spieler { margin-top: auto; margin-bottom: 18px; align-self: flex-start; width: min(100%, 360px);
+  display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px 14px; padding: 14px;
+  background: rgba(26, 20, 43, .92); border: 1px solid var(--tisch-rand); border-radius: 18px;
+  box-shadow: 0 18px 40px -18px rgba(10, 6, 20, .8); }
+.cover { position: relative; width: 64px; height: 64px; border-radius: 12px; overflow: hidden;
+  background: linear-gradient(180deg, var(--pflaume), var(--lila) 55%, var(--rosa)); }
+.cover-mond { position: absolute; top: 9px; right: 11px; width: 13px; height: 13px; border-radius: 50%; background: #fbeee0; }
+.balken { position: absolute; left: 7px; right: 7px; bottom: 6px; height: 34px; display: flex; gap: 2px; align-items: flex-end; }
+.balken i { flex: 1; height: 100%; border-radius: 2px 2px 0 0; background: var(--lampe); opacity: .9;
+  transform: scaleY(.08); transform-origin: bottom; }
+.info { display: flex; flex-direction: column; min-width: 0; justify-content: center; }
+.track { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kuenstler { font-size: 12px; color: var(--leise); margin-bottom: 8px; }
+.fortschritt { display: block; height: 4px; cursor: pointer; border-radius: 2px; background: var(--tisch-rand); overflow: hidden; }
+#fortschritt { display: block; height: 100%; background: var(--lampe); transform: scaleX(0); transform-origin: left; }
+.zeiten { display: flex; justify-content: space-between; font-size: 11px; color: var(--leise); margin-top: 4px;
+  font-variant-numeric: tabular-nums; }
+.steuerung { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; }
+.mini { width: 34px; height: 34px; border-radius: 50%; border: 0; background: transparent; color: var(--creme);
+  display: grid; place-items: center; cursor: pointer; }
+.mini:disabled, .play:disabled { opacity: .4; cursor: default; }
+.mini:hover { background: rgba(244, 235, 225, .1); }
+.mini svg { width: 16px; height: 16px; fill: currentColor; }
+.play { width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--creme); color: var(--nacht);
+  display: grid; place-items: center; cursor: pointer; }
+.play:hover { background: #fff; }
+.play svg { width: 18px; height: 18px; fill: currentColor; }
+.play .aus-icon, .play[aria-pressed=true] .an-icon { display: none; }
+.play[aria-pressed=true] .aus-icon { display: block; }
+.lautstaerke { margin-left: auto; display: flex; align-items: center; gap: 6px; color: var(--leise); }
+.lautstaerke svg { width: 18px; height: 18px; fill: currentColor; flex: none; }
+.lautstaerke .welle { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.lautstaerke input { width: 96px; flex: none; padding: 0; border: 0; background: none; accent-color: var(--lampe); }
+.tippen { grid-column: 1 / -1; margin: -4px 0 0; font-size: 12px; color: var(--lampe); animation: atmen 2.4s ease-in-out infinite; }
+
+.rechts { display: flex; align-items: center; gap: 8px; }
+.pille { font: inherit; color: var(--creme); background: rgba(26, 20, 43, .75); border: 0; border-radius: 999px;
+  padding: 4px 12px; cursor: pointer; }
+.pille:hover { background: rgba(26, 20, 43, .95); color: var(--lampe); }
+body:not([data-ansicht=haupt]) #abmelden { display: none; }
+
+@media (max-width: 720px) {
+  .ueberlagerung { padding-top: 24px; }
+  .tisch { margin: 20vh auto 24px; padding: 22px 18px; }
+  .spieler { margin: auto 0 16px; width: 100%; }
+  [data-ansicht=haupt] .tisch { padding: 22px 18px; }
+  .pflanze, .tasse { display: none; }
+  .rahmen { border-width: 12px; border-bottom-width: 12px; }
+  .rahmen::after { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }

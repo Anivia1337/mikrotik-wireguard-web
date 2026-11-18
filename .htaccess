@@ -1,0 +1,23 @@
+# /vpn - WireGuard-Verbindungen fuer die MikroTik erzeugen (Lofi-Seite,
+# app.js + api.php; Musik aus musik/, Liste von musik.php).
+
+Options -Indexes
+
+# Wie /skill: ohne DirectorySlash Off schickt mod_dir hinter dem Proxy eine
+# 301 auf http://. Die Rewrite-Regeln dazu stehen im Webroot-.htaccess.
+DirectorySlash Off
+DirectoryIndex index.html
+
+# config.php (und die Vorlage) wuerden zwar nur ausgefuehrt, trotzdem zu.
+<FilesMatch "^config.*\.php$">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "no-referrer"
+  Header always set Cache-Control "no-cache"
+  # Schluessel entstehen im Browser, Download als blob: ueber einen Link.
+  # media-src: die MP3s des Players aus musik/
+  Header always set Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+</IfModule>

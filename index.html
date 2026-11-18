@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#231c38">
+<title>VPN</title>
+<link rel="stylesheet" href="/vpn/stil.css?v=12">
+<script src="/vpn/app.js" defer></script>
+<script src="/vpn/stimmung.js?v=12" defer></script>
+</head>
+<body>
+<div class="zimmer">
+
+  <!-- Das Fenster: Abendhimmel, Stadt, Regen. Rein dekorativ. -->
+  <div class="fenster" aria-hidden="true">
+    <div class="himmel"></div>
+    <div class="mond"></div>
+    <svg class="stadt" viewBox="0 0 400 140" preserveAspectRatio="xMidYMax slice">
+      <path class="stadt-fern" d="M0 140V92h18V70h14v22h10V58h22v34h12V80h16v-26h10v26h8V64h20v28h14V76h12v-18h18v34h10V66h16v26h12V50h20v42h10V74h16v18h12V60h18v32h14V78h14v62Z"/>
+      <path class="stadt-nah" d="M0 140v-30h26V96h20v14h16V84h24v26h10v-12h22v12h18V90h26v20h12V72h22v38h14V94h18v16h20V86h24v24h12v-16h20v16h22V98h18v12h16v30Z"/>
+      <g class="lichter">
+        <rect x="32" y="102" width="3" height="3"/><rect x="70" y="92" width="3" height="3"/><rect x="76" y="100" width="3" height="3"/>
+        <rect x="140" y="96" width="3" height="3"/><rect x="196" y="80" width="3" height="3"/><rect x="204" y="92" width="3" height="3"/>
+        <rect x="262" y="94" width="3" height="3"/><rect x="300" y="100" width="3" height="3"/><rect x="356" y="104" width="3" height="3"/>
+        <rect x="112" y="64" width="2" height="2"/><rect x="232" y="56" width="2" height="2"/><rect x="338" y="70" width="2" height="2"/>
+      </g>
+    </svg>
+    <div id="regen" class="regen"></div>
+    <div id="scheibe" class="scheibe"></div>
+    <div class="rahmen"></div>
+    <div class="pflanze">
+      <svg viewBox="0 0 80 90"><path class="blatt" d="M40 62C24 54 14 38 18 20c14 8 22 24 22 42Zm0 0c16-8 26-24 22-42-14 8-22 24-22 42Zm0 0C30 52 4 50 0 36c16-2 34 8 40 26Zm0 0c10-10 36-12 40-26-16-2-34 8-40 26Z"/><path class="topf" d="M22 62h36l-5 28H27Z"/></svg>
+    </div>
+    <div class="tasse">
+      <span class="dampf"></span><span class="dampf d2"></span>
+      <svg viewBox="0 0 60 50"><path class="becher" d="M6 10h38v22a16 16 0 0 1-16 16h-6A16 16 0 0 1 6 32Z"/><path class="henkel" d="M44 16h4a8 8 0 0 1 0 16h-4"/></svg>
+    </div>
+  </div>
+
+  <div class="ueberlagerung">
+    <header class="leiste">
+      <span class="live"><span class="punkt"></span>tunnel radio</span>
+      <span class="rechts">
+        <span id="uhr" class="uhr"></span>
+        <button id="abmelden" class="pille" type="button">sign out</button>
+      </span>
+    </header>
+
+    <main class="tisch">
+      <h1>late night tunnels</h1>
+      <p id="laden" class="leise"><span id="laden-text">tuning in…</span></p>
+
+      <div id="setup" hidden>
+        <p class="leise">no password yet. type one, copy the line into <code>vpn/config.php</code>, reload. nothing gets saved here.</p>
+        <form id="setup-form" class="reihe">
+          <label class="unsichtbar" for="setup-pw">password</label>
+          <input id="setup-pw" type="password" minlength="8" autocomplete="new-password" placeholder="8 characters or more" required>
+          <button class="knopf" type="submit">show hash</button>
+        </form>
+        <p id="setup-fehler" class="fehler" role="alert" hidden></p>
+        <pre id="setup-ergebnis" class="zettel" hidden><span id="setup-hash"></span></pre>
+      </div>
+
+      <div id="login" hidden>
+        <p class="leise">the door's locked. you know the word.</p>
+        <form id="login-form" class="reihe">
+          <label class="unsichtbar" for="login-pw">password</label>
+          <input id="login-pw" type="password" autocomplete="current-password" placeholder="password" required>
+          <button class="knopf" type="submit">come in</button>
+        </form>
+        <p id="login-fehler" class="fehler" role="alert" hidden></p>
+      </div>
+
+      <div id="haupt" class="spalten" hidden>
+        <section class="neu">
+          <p class="leise">make a key for a device, import the file in WireGuard, lean back.</p>
+          <form id="neu-form" class="reihe">
+            <label class="unsichtbar" for="neu-name">device name</label>
+            <input id="neu-name" maxlength="40" placeholder="which device?" autocomplete="off" required>
+            <button class="knopf" type="submit">create + download</button>
+          </form>
+          <p id="neu-fehler" class="fehler" role="alert" hidden></p>
+
+          <div id="ergebnis" class="zettel" hidden>
+            <p><b id="erg-name"></b> is all set on <span id="erg-adresse"></span>. the file <span id="erg-datei"></span> is downloading.</p>
+            <p class="leise">the private key lives only in that file. lose it, make a new one.</p>
+            <p class="knoepfe">
+              <button id="erg-laden" class="knopf klein" type="button">download again</button>
+              <button id="erg-zu" class="text-knopf" type="button">done</button>
+            </p>
+            <details>
+              <summary>peek at the file</summary>
+              <pre id="erg-text"></pre>
+            </details>
+          </div>
+        </section>
+
+        <section class="playlist">
+          <h2>on the playlist <span class="leise">(<span id="anzahl">0</span>)</span></h2>
+          <p id="liste-fehler" class="fehler" role="alert" hidden></p>
+          <ul id="liste" class="liste"></ul>
+          <p id="liste-leer" class="leise" hidden>quiet in here. add the first device.</p>
+        </section>
+      </div>
+    </main>
+
+    <aside class="spieler" aria-label="Music player">
+      <div class="cover" aria-hidden="true">
+        <span class="cover-mond"></span>
+        <span id="balken" class="balken"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      </div>
+      <div class="info">
+        <span id="track" class="track">tuning in…</span>
+        <span id="kuenstler" class="kuenstler">tunnel radio</span>
+        <span class="fortschritt"><span id="fortschritt"></span></span>
+        <span class="zeiten"><span id="zeit-jetzt">0:00</span><span id="zeit-ganz">0:00</span></span>
+      </div>
+      <div class="steuerung">
+        <button id="zurueck" class="mini" type="button" aria-label="Previous track">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12Z"/></svg>
+        </button>
+        <button id="beats" class="play" type="button" aria-pressed="false" aria-label="Play music">
+          <svg class="an-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7Z"/></svg>
+          <svg class="aus-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+        </button>
+        <button id="weiter" class="mini" type="button" aria-label="Next track">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7Z"/></svg>
+        </button>
+        <label class="lautstaerke">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4Z"/><path class="welle" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+          <span class="unsichtbar">Volume</span>
+          <input id="lautstaerke" type="range" min="0" max="100" value="60">
+        </label>
+      </div>
+      <p id="tippen" class="tippen" hidden>click anywhere to tune in</p>
+    </aside>
+  </div>
+</div>
+</body>
+</html>
