@@ -2,6 +2,14 @@
 
 A small web page that creates WireGuard connections on a MikroTik router with one click and downloads the finished `.conf` file. It is styled as a rainy lofi-stream window with a mini music player.
 
+![Main view: a new connection was just created, the peer list is on the right](docs/main.png)
+
+| Sign-in | On a phone |
+|---|---|
+| ![Sign-in view](docs/login.png) | ![Phone layout: sign-in, peer list and a new connection](docs/mobile.png) |
+
+*The screenshots use demo data: the devices, addresses and keys are made up.*
+
 - **The keys are generated in the browser.** WebCrypto X25519 makes the key pair. The private key never leaves the device; the server only receives the public key and a preshared key.
 - **One click, one file.** Enter a device name and press the button. The page then:
   - picks the next free address,
