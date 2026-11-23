@@ -111,6 +111,21 @@ function geraetename(mixed $roh): string {
     return $name;
 }
 
+/** Anzeigename wie in der Liste: Kommentar ohne Praefix, sonst Kommentar oder RouterOS-Name. */
+function peer_name(array $p): string {
+    $c = (string) ($p['comment'] ?? '');
+    return str_starts_with($c, VPN_MARKE) ? substr($c, strlen(VPN_MARKE)) : ($c !== '' ? $c : (string) ($p['name'] ?? ''));
+}
+
+/** Gleicher Name (ohne Gross/Klein) schon auf dem Interface? $ausser = eigene ID beim Umbenennen. */
+function name_frei(string $name, string $ausser = ''): void {
+    foreach (ros('GET', '/interface/wireguard/peers?interface=' . rawurlencode(VPN_IFACE)) as $p) {
+        if ($p['.id'] !== $ausser && mb_strtolower(peer_name($p)) === mb_strtolower($name)) {
+            fehler('A device called "' . $name . '" already exists. Pick another name.', 409);
+        }
+    }
+}
+
 /** Peer-ID pruefen; nur Peers dieser Seite (Kommentar-Praefix) duerfen geaendert werden. */
 function eigener_peer(mixed $roh): string {
     $id = (string) $roh;
@@ -183,13 +198,12 @@ case 'peers':
     $iface = interface_info();
     $liste = [];
     foreach (ros('GET', '/interface/wireguard/peers?interface=' . rawurlencode(VPN_IFACE)) as $p) {
-        $c   = (string) ($p['comment'] ?? '');
-        $web = str_starts_with($c, VPN_MARKE);
+        $web = str_starts_with((string) ($p['comment'] ?? ''), VPN_MARKE);
         $hs  = isset($p['last-handshake']) ? sekunden((string) $p['last-handshake']) : null;
         // Nur ausgewaehlte Felder - der Peer-Datensatz enthaelt auch Schluessel.
         $liste[] = [
             'id'        => $p['.id'],
-            'name'      => $web ? substr($c, strlen(VPN_MARKE)) : ($c !== '' ? $c : (string) ($p['name'] ?? '')),
+            'name'      => peer_name($p),
             'web'       => $web,
             'address'   => (string) ($p['allowed-address'] ?? ''),
             'handshake' => $hs,
@@ -203,6 +217,7 @@ case 'peers':
 
 case 'add':
     $name = geraetename($in['name'] ?? '');
+    name_frei($name);
     foreach (['publicKey', 'presharedKey'] as $k) {
         if (!preg_match('~^[A-Za-z0-9+/]{43}=$~', (string) ($in[$k] ?? ''))) fehler('Invalid key.', 422);
     }
@@ -250,8 +265,10 @@ case 'pause':
     antwort([]);
 
 case 'rename':
-    $id = eigener_peer($in['id'] ?? '');
-    ros('PATCH', '/interface/wireguard/peers/' . $id, ['comment' => VPN_MARKE . geraetename($in['name'] ?? '')]);
+    $id   = eigener_peer($in['id'] ?? '');
+    $name = geraetename($in['name'] ?? '');
+    name_frei($name, $id);
+    ros('PATCH', '/interface/wireguard/peers/' . $id, ['comment' => VPN_MARKE . $name]);
     antwort([]);
 }
 
