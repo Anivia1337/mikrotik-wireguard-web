@@ -225,6 +225,8 @@ case 'add':
         'public-key'      => $in['publicKey'],
         'preshared-key'   => $in['presharedKey'],
         'allowed-address' => "$adresse/32",
+        // wie im .conf des Geraets: haelt NAT/Firewall offen, auch wenn nur der Router sendet
+        'persistent-keepalive' => '25s',
         'comment'         => VPN_MARKE . $name,
     ]);
     antwort([
