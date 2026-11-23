@@ -4,11 +4,15 @@ A small web page that creates WireGuard connections on a MikroTik router with on
 
 ![Main view: a new connection was just created, the peer list is on the right](docs/main.png)
 
+| The finished `.conf` file | First start: setting the password |
+|---|---|
+| ![The result card opened to show the WireGuard config file](docs/config.png) | ![Setup view: a password is turned into the hash for config.php](docs/setup.png) |
+
 | Sign-in | On a phone |
 |---|---|
-| ![Sign-in view](docs/login.png) | ![Phone layout: sign-in, peer list and a new connection](docs/mobile.png) |
+| ![Sign-in view](docs/login.png) | ![Phone layout: sign-in, peer list and the config file](docs/mobile.png) |
 
-*The screenshots use demo data: the devices, addresses and keys are made up.*
+*The screenshots use demo data: the devices, addresses, keys and the hash are made up.*
 
 - **The keys are generated in the browser.** WebCrypto X25519 makes the key pair. The private key never leaves the device; the server only receives the public key and a preshared key.
 - **One click, one file.** Enter a device name and press the button. The page then:

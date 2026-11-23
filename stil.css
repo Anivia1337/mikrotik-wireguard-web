@@ -104,7 +104,7 @@ code { font-family: var(--mono); font-size: .88em; color: var(--lampe); }
 .playlist h2 { margin-top: 0; }
 .playlist .liste { max-height: 46vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--tisch-rand) transparent; }
 @media (max-width: 900px) {
-  .spalten { grid-template-columns: 1fr; }
+  .spalten { grid-template-columns: minmax(0, 1fr); }   /* minmax: lange Zeilen im pre scrollen statt die Karte zu sprengen */
   .playlist { border-left: 0; padding-left: 0; }
   .playlist h2 { margin-top: 28px; }
 }
