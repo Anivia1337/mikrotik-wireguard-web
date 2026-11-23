@@ -7,17 +7,23 @@
  *
  *   GET  ?a=status          -> {auth, setup}
  *   POST ?a=hash   {password}  nur solange kein Hash gesetzt ist
- *   POST ?a=login  {password}
+ *   POST ?a=login  {password, merken}
  *   POST ?a=logout
  *   GET  ?a=peers
- *   POST ?a=add    {name, publicKey, presharedKey}
+ *   POST ?a=add    {name, publicKey, presharedKey, modus: "alles"|"heim"}
  *   POST ?a=del    {id}
+ *   POST ?a=pause  {id, aus: bool}
+ *   POST ?a=rename {id, name}
  */
 declare(strict_types=1);
 require __DIR__ . '/config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
+
+const MERKEN_TAGE  = 30;
+const SPERRE_VERSUCHE = 5;          // falsche Passwoerter ...
+const SPERRE_SEKUNDEN = 15 * 60;    // ... innerhalb dieser Zeit sperren so lange
 
 session_name('vpn');
 session_set_cookie_params(['lifetime' => 0, 'path' => '/vpn', 'secure' => true,
@@ -30,6 +36,36 @@ function antwort(array $d, int $code = 200): never {
     exit;
 }
 function fehler(string $text, int $code): never { antwort(['error' => $text], $code); }
+
+/* ---------- Angemeldet bleiben ----------
+   Cookie "ablauf.hmac". Der Schluessel ist der Passwort-Hash: ein neues
+   Passwort macht alle gemerkten Anmeldungen ungueltig. */
+function merk_cookie(string $wert, int $ablauf): void {
+    setcookie('vpn_merken', $wert, ['expires' => $ablauf, 'path' => '/vpn', 'secure' => true,
+                                    'httponly' => true, 'samesite' => 'Strict']);
+}
+function merk_signatur(int $ablauf): string { return hash_hmac('sha256', "vpn-merken|$ablauf", VPN_PASSWORD_HASH); }
+function merk_gueltig(): bool {
+    if (VPN_PASSWORD_HASH === '' || !preg_match('/^(\d+)\.([0-9a-f]{64})$/', (string) ($_COOKIE['vpn_merken'] ?? ''), $m)) return false;
+    return (int) $m[1] > time() && hash_equals(merk_signatur((int) $m[1]), $m[2]);
+}
+if (empty($_SESSION['vpn']) && merk_gueltig()) {
+    session_regenerate_id(true);
+    $_SESSION['vpn'] = true;
+}
+
+/* ---------- Sperre nach falschen Passwoertern ----------
+   Pro Absender-IP. Hinter openresty ist REMOTE_ADDR der Proxy, die echte
+   Adresse steht in X-Real-IP. */
+function sperr_datei(): string {
+    $ip = (string) ($_SERVER['HTTP_X_REAL_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '?');
+    return sys_get_temp_dir() . '/vpn-sperre-' . hash('sha256', $ip) . '.json';
+}
+function fehlversuche(): array {
+    $d = json_decode((string) @file_get_contents(sperr_datei()), true);
+    // nur Versuche innerhalb des Zeitfensters zaehlen
+    return array_values(array_filter(is_array($d) ? $d : [], fn($t) => is_int($t) && $t > time() - SPERRE_SEKUNDEN));
+}
 
 function ros(string $methode, string $pfad, ?array $body = null): array {
     $ch = curl_init(VPN_ROUTER . $pfad);
@@ -69,6 +105,23 @@ function interface_info(): array {
     return $i;
 }
 
+function geraetename(mixed $roh): string {
+    $name = trim(mb_substr(preg_replace('/[^\p{L}\p{N} ._-]/u', '', (string) $roh), 0, 40));
+    if ($name === '') fehler('Give the device a name.', 422);
+    return $name;
+}
+
+/** Peer-ID pruefen; nur Peers dieser Seite (Kommentar-Praefix) duerfen geaendert werden. */
+function eigener_peer(mixed $roh): string {
+    $id = (string) $roh;
+    if (!preg_match('/^\*[0-9A-F]+$/', $id)) fehler('Invalid id.', 422);
+    $p = ros('GET', '/interface/wireguard/peers/' . $id);
+    if (($p['interface'] ?? '') !== VPN_IFACE || !str_starts_with((string) ($p['comment'] ?? ''), VPN_MARKE)) {
+        fehler('Only connections created here can be changed here.', 403);
+    }
+    return $id;
+}
+
 $a    = (string) ($_GET['a'] ?? '');
 $in   = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -76,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (($_SERVER['HTTP_X_VPN'] ?? '') !== '1') fehler('Bad request.', 400);
     $in = json_decode((string) file_get_contents('php://input'), true);
     if (!is_array($in)) fehler('Bad request.', 400);
-} elseif (in_array($a, ['hash', 'login', 'logout', 'add', 'del'], true)) {
+} elseif (in_array($a, ['hash', 'login', 'logout', 'add', 'del', 'pause', 'rename'], true)) {
     fehler('Use POST.', 405);
 }
 
@@ -95,17 +148,31 @@ case 'hash':
 
 case 'login':
     if ($setup) fehler('No password is set yet.', 409);
-    if (!password_verify((string) ($in['password'] ?? ''), VPN_PASSWORD_HASH)) {
-        sleep(2);  // ponytail: nur Bremse pro Anfrage; echte Sperre (fail2ban/Zaehler) wenn je noetig
-        fehler('Wrong password.', 401);
+    $versuche = fehlversuche();
+    if (count($versuche) >= SPERRE_VERSUCHE) {
+        $warten = (int) ceil((min($versuche) + SPERRE_SEKUNDEN - time()) / 60);
+        fehler("Too many wrong passwords. Try again in $warten min.", 429);
     }
+    if (!password_verify((string) ($in['password'] ?? ''), VPN_PASSWORD_HASH)) {
+        $versuche[] = time();
+        @file_put_contents(sperr_datei(), json_encode($versuche), LOCK_EX);
+        sleep(2);
+        $rest = SPERRE_VERSUCHE - count($versuche);
+        fehler($rest > 0 ? "Wrong password. $rest tries left." : 'Wrong password. Locked for ' . SPERRE_SEKUNDEN / 60 . ' min.', 401);
+    }
+    @unlink(sperr_datei());
     session_regenerate_id(true);
     $_SESSION['vpn'] = true;
+    if (!empty($in['merken'])) {
+        $ablauf = time() + MERKEN_TAGE * 86400;
+        merk_cookie($ablauf . '.' . merk_signatur($ablauf), $ablauf);
+    }
     antwort(['auth' => true]);
 
 case 'logout':
     $_SESSION = [];
     session_destroy();
+    merk_cookie('', 1);
     antwort([]);
 }
 
@@ -135,8 +202,7 @@ case 'peers':
     antwort(['interface' => VPN_IFACE, 'running' => ($iface['running'] ?? '') === 'true', 'peers' => $liste]);
 
 case 'add':
-    $name = trim(mb_substr(preg_replace('/[^\p{L}\p{N} ._-]/u', '', (string) ($in['name'] ?? '')), 0, 40));
-    if ($name === '') fehler('Give the device a name.', 422);
+    $name = geraetename($in['name'] ?? '');
     foreach (['publicKey', 'presharedKey'] as $k) {
         if (!preg_match('~^[A-Za-z0-9+/]{43}=$~', (string) ($in[$k] ?? ''))) fehler('Invalid key.', 422);
     }
@@ -168,17 +234,22 @@ case 'add':
         'dns'        => VPN_DNS,
         'serverKey'  => (string) $iface['public-key'],
         'endpoint'   => VPN_ENDPOINT . ':' . $iface['listen-port'],
-        'allowedIps' => VPN_ALLOWED,
+        // "heim": nur Heimnetz durch den Tunnel, der Rest geht normal ins Internet
+        'allowedIps' => ($in['modus'] ?? '') === 'heim' ? VPN_ALLOWED_HEIM : VPN_ALLOWED,
     ]);
 
 case 'del':
-    $id = (string) ($in['id'] ?? '');
-    if (!preg_match('/^\*[0-9A-F]+$/', $id)) fehler('Invalid id.', 422);
-    $p = ros('GET', '/interface/wireguard/peers/' . $id);
-    if (($p['interface'] ?? '') !== VPN_IFACE || !str_starts_with((string) ($p['comment'] ?? ''), VPN_MARKE)) {
-        fehler('Only connections created here can be removed here.', 403);
-    }
-    ros('DELETE', '/interface/wireguard/peers/' . $id);
+    ros('DELETE', '/interface/wireguard/peers/' . eigener_peer($in['id'] ?? ''));
+    antwort([]);
+
+case 'pause':
+    ros('PATCH', '/interface/wireguard/peers/' . eigener_peer($in['id'] ?? ''),
+        ['disabled' => empty($in['aus']) ? 'false' : 'true']);
+    antwort([]);
+
+case 'rename':
+    $id = eigener_peer($in['id'] ?? '');
+    ros('PATCH', '/interface/wireguard/peers/' . $id, ['comment' => VPN_MARKE . geraetename($in['name'] ?? '')]);
     antwort([]);
 }
 

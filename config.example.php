@@ -19,7 +19,8 @@ const VPN_NETZ       = '10.99.0';
 const VPN_RESERVIERT = [0, 1, 255];   // .1 = Router; weitere feste Adressen hier eintragen
 const VPN_DNS        = '10.99.0.1';
 const VPN_ENDPOINT   = 'vpn.example.com';   // Name oder IP, unter der der Router von aussen erreichbar ist
-const VPN_ALLOWED    = '0.0.0.0/0, ::/0';   // alles durch den Tunnel; nur Heimnetz z.B. '10.99.0.0/24, 192.168.88.0/24'
+const VPN_ALLOWED    = '0.0.0.0/0, ::/0';   // Auswahl "alles durch den Tunnel"
+const VPN_ALLOWED_HEIM = '10.99.0.0/24, 192.168.88.0/24';   // Auswahl "nur Heimnetz": VPN-Netz + LAN
 
 // Kommentar-Praefix fuer Peers, die von dieser Seite stammen. Nur diese
 // lassen sich hier auch wieder loeschen.

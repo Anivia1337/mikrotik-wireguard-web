@@ -78,6 +78,8 @@
     $('track').textContent = a.titel;
     $('kuenstler').textContent = (a.kuenstler || 'tunnel radio') + ', track ' + (nr + 1) + ' of ' + liste.length;
     $('zeit-ganz').textContent = '0:00';
+    // Titel fuer Medientasten, Sperrbildschirm und die Windows-Medienanzeige
+    if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: a.titel, artist: a.kuenstler || 'tunnel radio', album: 'tunnel radio' });
     if (spielen) spiele();
   }
 
@@ -131,6 +133,7 @@
     document.body.classList.toggle('spielt', laeuft);
     $('tippen').textContent = stumm ? 'muted by the browser, click anywhere for sound' : 'click anywhere to tune in';
     $('tippen').hidden = !wartet;
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = laeuft ? 'playing' : 'paused';
   }
 
   // Stelle merken, damit Neuladen im selben Track an derselben Stelle weitermacht.
@@ -174,9 +177,27 @@
     audio.currentTime = (ev.clientX - r.left) / r.width * audio.duration;
   });
 
+  // Medientasten der Tastatur bzw. des Betriebssystems laufen ueber dieselben Knoepfe.
+  if ('mediaSession' in navigator) {
+    const ms = navigator.mediaSession;
+    ms.setActionHandler('play', () => { if (audio.paused || audio.muted) knopf.click(); });
+    ms.setActionHandler('pause', () => { if (!audio.paused) knopf.click(); });
+    ms.setActionHandler('nexttrack', () => $('weiter').click());
+    ms.setActionHandler('previoustrack', () => $('zurueck').click());
+  }
+
+  // Leertaste = Play/Pause, ausser beim Tippen oder auf einem Knopf (dort klickt sie ohnehin).
+  const leertaste = ev => ev.type === 'keydown' && ev.code === 'Space' && !ev.repeat
+    && !ev.target.closest?.('input, textarea, select, button, summary, a, [contenteditable]');
+  document.addEventListener('keydown', ev => {
+    if (!leertaste(ev) || !liste.length) return;
+    ev.preventDefault();     // sonst scrollt die Seite
+    knopf.click();
+  });
+
   // Erste Bedienung irgendwo: Ton dazu (der Play-Knopf entscheidet selbst).
   function freischalten(ev) {
-    if (ev.target.closest?.('#beats')) return;
+    if (ev.target.closest?.('#beats') || leertaste(ev)) return;
     if (wartet) tonAn();
     else if (!ctx && !audio.paused) verbinde();   // Ton lief schon: nur die Balken anschliessen
   }

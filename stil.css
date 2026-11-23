@@ -127,7 +127,19 @@ input:focus { outline: none; border-color: var(--lampe); }
 .text-knopf { font: inherit; font-size: 14px; color: var(--leise); background: none; border: 0; cursor: pointer;
   text-decoration: underline; text-underline-offset: 3px; padding: 4px 0; }
 .text-knopf:hover { color: var(--creme); }
+.knopf.hell { background: transparent; color: #3a2f4f; box-shadow: inset 0 0 0 1px #cbbfae; }
+.knopf.hell:hover { background: #e9dece; }
 @media (max-width: 460px) { .reihe { flex-direction: column; } }
+
+/* Haken "angemeldet bleiben" und die Tunnel-Auswahl */
+.haken { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 14px; color: var(--leise); cursor: pointer; }
+.haken input, .modus input { flex: none; accent-color: var(--lampe); margin: 0; }
+.modus { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 0; margin: 10px 0 0; }
+.modus label { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 14px; color: var(--leise);
+  border: 1px solid var(--tisch-rand); border-radius: 999px; cursor: pointer; }
+.modus label:has(:checked) { color: var(--creme); border-color: var(--lampe); }
+.modus label:has(:focus-visible) { outline: 2px solid var(--lampe); outline-offset: 2px; }
+#suche { width: 100%; margin: 0 0 8px; padding: 7px 12px; font-size: 14px; }
 
 .zettel { margin: 18px 0 0; padding: 14px 16px; background: #f4ebe1; color: #3a2f4f; border-radius: 6px;
   transform: rotate(-.6deg); box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .6); }
@@ -137,6 +149,9 @@ input:focus { outline: none; border-color: var(--lampe); }
 .zettel .knoepfe { display: flex; gap: 16px; align-items: center; margin: 12px 0 0; }
 .zettel .text-knopf { color: #6e6283; }
 .zettel summary { cursor: pointer; color: #6e6283; margin-top: 10px; font-size: 14px; }
+.qr { display: flex; align-items: center; gap: 14px; margin: 12px 0 0; }
+.qr canvas { flex: none; width: 168px; height: 168px; image-rendering: pixelated; border-radius: 4px; }
+.qr figcaption { font-size: 13px; }
 pre { font: 12px/1.55 var(--mono); white-space: pre; overflow-x: auto; margin: 8px 0 0; }
 #setup-ergebnis { font: 12px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 
@@ -147,11 +162,14 @@ pre { font: 12px/1.55 var(--mono); white-space: pre; overflow-x: auto; margin: 8
 .peer-adr { font-family: var(--mono); font-size: 12px; }
 .an .peer-name::after { content: "  on air"; color: var(--lampe); font-weight: 400; font-size: 13px; }
 .an .peer-status { color: var(--lampe); }
-.aus { opacity: .5; }
-.peer-weg, .peer-fremd { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
-.peer-weg { font: inherit; font-size: 13px; color: var(--creme); background: none; border: 1px solid var(--tisch-rand);
+.aus > :not(.peer-knoepfe) { opacity: .5; }   /* pausiert: blass, aber "Resume" bleibt gut sichtbar */
+.peer-knoepfe, .peer-fremd { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
+.peer-knoepfe { display: flex; justify-content: flex-end; gap: 6px; }
+.peer-knopf { font: inherit; font-size: 13px; color: var(--creme); background: none; border: 1px solid var(--tisch-rand);
   border-radius: 999px; padding: 4px 12px; cursor: pointer; }
-.peer-weg:hover { border-color: var(--fehler); color: var(--fehler); }
+.peer-knopf:hover { border-color: var(--lampe); color: var(--lampe); }
+.peer-knopf.weg:hover { border-color: var(--fehler); color: var(--fehler); }
+.peer-knopf:disabled { opacity: .5; cursor: progress; }
 .peer-fremd { font-size: 12px; color: #7f739c; }
 
 /* ---------- Mini-Player ---------- */
