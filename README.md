@@ -1,4 +1,4 @@
-# Late Night Tunnels
+# Rain Check
 
 A small web page that creates WireGuard connections on a MikroTik router with one click and downloads the finished `.conf` file. It is styled as a rainy lofi-stream window with a mini music player.
 
